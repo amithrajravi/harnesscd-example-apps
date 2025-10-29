@@ -1,0 +1,10 @@
+environment:
+  name: ownappqaenv
+  identifier: ownappqaenv
+  description: ""
+  tags: {}
+  type: PreProduction
+  orgIdentifier: default
+  projectIdentifier: default_project
+  variables: []
+

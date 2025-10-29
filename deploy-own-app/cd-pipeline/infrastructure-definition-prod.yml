@@ -1,15 +1,16 @@
 infrastructureDefinition:
-  name: ownapp_k8sinfra
-  identifier: ownappk8sinfra
+  name: ownapp_k8sinfra_prod
+  identifier: ownappk8sinfraprod
   description: ""
   tags: {}
   orgIdentifier: default
   projectIdentifier: default_project
-  environmentRef: ownappdevenv
+  environmentRef: ownappprodenv
   deploymentType: Kubernetes
   type: KubernetesDirect
   spec:
       connectorRef: ownappk8sconnector
-      namespace: dev-ns
+      namespace: prod-ns
       releaseName: release-<+INFRA_KEY>
   allowSimultaneousDeployments: false
+

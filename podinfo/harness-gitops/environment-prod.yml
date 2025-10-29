@@ -1,8 +1,0 @@
-environment:
-  name: prod
-  identifier: prod
-  tags: {}
-  type: Production
-  orgIdentifier: default
-  projectIdentifier: default_project
-  variables: []

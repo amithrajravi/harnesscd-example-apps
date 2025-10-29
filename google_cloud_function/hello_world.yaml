@@ -1,6 +1,0 @@
-function:
-  name: hello_world
-  runtime: python311
-  entryPoint: hello_world
-  httpsTrigger:
-    securityLevel: SECURE_OPTIONAL

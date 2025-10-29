@@ -1,7 +1,0 @@
-environment:
-  name: k8s-demo-env
-  identifier: k8sdemoenv
-  tags: {}
-  type: PreProduction
-  orgIdentifier: default
-  projectIdentifier: YOUR_PROJECT_IDENTIFIER

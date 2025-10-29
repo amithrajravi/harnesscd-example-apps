@@ -1,0 +1,10 @@
+environment:
+  name: ownappprodenv
+  identifier: ownappprodenv
+  description: ""
+  tags: {}
+  type: Production
+  orgIdentifier: default
+  projectIdentifier: default_project
+  variables: []
+
