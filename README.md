@@ -33,39 +33,47 @@ Reference followed: `https://developer.harness.io/docs/continuous-delivery/get-s
 Run the pipeline in Harness. Execution should show:
 - Dev stage succeeds → QA stage succeeds → Approval waits → once approved → Prod stage succeeds
 
-## 3) Verifying the running pod
+## 3) Verify the deployment (simple checks)
 
-After Dev/QA/Prod deploys, verify on the cluster:
+Run these commands against the namespace used by each stage (Dev/QA/Prod):
 
 ```bash
+# What’s running and exposed
 kubectl get deploy,rs,po,svc -n <dev|qa|prod-namespace>
+
+# Health and rollout details
 kubectl describe deploy <guestbook-deployment> -n <namespace>
+
+# Recent app logs
 kubectl logs deploy/<guestbook-deployment> -n <namespace> --tail=100
 ```
 
-## 4) Deployment strategy and rationale
+## 4) Deployment strategy (what and why)
 
-- Strategy: Kubernetes Rolling update across all environments.
-- Why: Simple, low‑risk for stateless services, leverages K8s readiness probes, easy rollback to prior ReplicaSet, and aligns with the referenced tutorial baseline.
-- Alternatives available (included previously for reference but removed for focus): Canary / Blue‑Green.
+- Strategy: Kubernetes Rolling update in all environments.
+- Why this strategy:
+  - Keeps the app available during updates (pods roll gradually)
+  - Uses native readiness checks for safe rollout
+  - Easy rollback to the previous ReplicaSet if needed
+- Notes: Canary and Blue‑Green are valid alternatives but were omitted here to keep the exercise focused.
 
-## 5) How to automate Harness entities
+## 5) Automating Harness setup (your options)
 
-- GitOps via YAML (this repo): store Services, Environments, Infrastructures, Connectors, and Pipelines as YAML and import/sync in Harness.
-- Harness APIs: create/update entities programmatically.
+- GitOps with YAML (recommended here): store Services, Environments, Infrastructures, Connectors, and Pipelines in Git (this repo) and import/sync in Harness.
+- Harness APIs: create/update entities via REST.
 - Terraform Provider for Harness: manage entities declaratively and promote across orgs/projects.
-- Pipelines as Code: keep pipelines remote in Git with PR workflows.
+- Pipelines as Code: keep pipelines remote in Git with PR reviews.
 
-## 6) Documentation feedback
+## 6) Doc feedback (how it could be clearer)
 
-- Provide a full multi‑environment example with an explicit Production approval stage.
-- Call out common connector scopes and `connectorRef` formats (account./org./project).
-- Add troubleshooting for delegate‑to‑cluster connectivity (localhost:8080), namespace RBAC, and branch/repo mismatches.
+- Include a complete Dev→QA→Prod example with an explicit Prod approval gate.
+- Clarify connector scopes and how to reference them (`account.`, `org.`, or project‑level `connectorRef`).
+- Add troubleshooting for common issues: delegate→cluster connectivity (localhost:8080), namespace RBAC, and wrong repo/branch.
 
-## Setup notes (pre‑flight)
+## Setup notes (before you run it)
 
-- Ensure your Docker or K8s Delegate is connected and has access to the cluster.
-- Update `deploy-own-app/cd-pipeline/kubernetes-connector.yml` delegate selector to match your delegate.
-- Ensure GitHub PAT secret (`ownappgitpat`) exists; update `github-connector.yml` username/account URL if needed.
-- Adjust namespaces in infra definitions: Dev default `harness-delegate-ng`, QA `qa-ns`, Prod `prod-ns` (edit as needed).
+- Make sure your Delegate is connected and can reach the Kubernetes API.
+- In `deploy-own-app/cd-pipeline/kubernetes-connector.yml`, set the delegate selector to match your delegate.
+- Ensure a GitHub PAT secret exists (e.g., `ownappgitpat`) and that `github-connector.yml` points to your account/repo/branch.
+- Namespaces in infra definitions: Dev `dev-ns`, QA `qa-ns`, Prod `prod-ns` — change if your cluster uses different ones.
 
