@@ -1,4 +1,4 @@
-# Deploy your microservice application using Continuous Delivery
+# Deploy your microservice application using Harness CD
 
 This repository gives a quick overview about deploying a microservice (Guestbook UI) to Dev, QA, and Prod Kubernetes environments using a Harness CD pipeline with a Production approval gate.
 
@@ -11,11 +11,13 @@ Reference followed: `https://developer.harness.io/docs/continuous-delivery/get-s
 - `guestbook/`
   - `guestbook-ui-deployment.yaml`, `guestbook-ui-svc.yaml` — Kubernetes manifests deployed by the pipeline
 - `deploy-own-app/cd-pipeline/`
-  - `service.yml` — Harness Service pointing to manifests in this repo
-  - `environment.yml` — Dev environment (Development)
-  - `environment-qa.yml` — QA environment (Staging)
-  - `environment-prod.yml` — Prod environment (Production)
-  - `infrastructure-definition*.yml` — K8s infrastructure for Dev/QA/Prod
+  - `service.yml` — Harness service pointing to manifests in this repo
+  - `environment.yml` — Development environment
+  - `environment-qa.yml` — QA environment
+  - `environment-prod.yml` — Production environment
+  - `infrastructure-definition.yml` — K8s infrastructure for Development
+  - `infrastructure-definition-qa.yml` — K8s infrastructure for QA
+  - `infrastructure-definition-prod.yml` — K8s infrastructure for Production
   - `kubernetes-connector.yml` — K8s connector (inherit from delegate)
   - `github-connector.yml` — GitHub connector (account-level)
   - `ownapp-multi-env-pipeline.yml` — Multi-stage pipeline (Dev → QA → Approval → Prod)
@@ -26,8 +28,6 @@ Reference followed: `https://developer.harness.io/docs/continuous-delivery/get-s
 - Service: `ownappservice` (Kubernetes) deploying `guestbook` manifests from this repo
 - Environments: `ownappdevenv` (Dev), `ownappqaenv` (QA), `ownappprodenv` (Prod)
 - Approval: requires a manual gate before Prod deployment
-
-![Pipeline design](images\pipeline-design.png)
 
 ```yaml
 pipeline:
@@ -186,23 +186,23 @@ Run the pipeline in Harness. Execution should show:
 
 ## 3) Verify the deployment
 
-Run the following commands in the left column for each environment.
+Run the following commands for each environment.
 
 ### 1. Development Namespace (`dev-ns`)
 
-| Command | Output |
-| :--- | :--- |
-| `kubectl get pods -n dev-ns` | *(Insert output of kubectl get pods -n dev-ns)* |
-| `kubectl get svc -n dev-ns` | *(Insert output of kubectl get svc -n dev-ns)* |
+| Command | 
+| :--- | 
+| `kubectl get pods -n dev-ns` |
+| `kubectl get svc -n dev-ns` |
 
 ---
 
 ### 2. QA Namespace (`qa-ns`)
 
-| Command | Output |
-| :--- | :--- |
-| `kubectl get pods -n qa-ns` | *(Insert output of kubectl get pods -n qa-ns)* |
-| `kubectl get svc -n qa-ns` | *(Insert output of kubectl get svc -n qa-ns)* |
+| Command | 
+| :--- |
+| `kubectl get pods -n qa-ns` | 
+| `kubectl get svc -n qa-ns` | 
 
 ---
 
@@ -210,21 +210,21 @@ Run the following commands in the left column for each environment.
 
 | Command | Output |
 | :--- | :--- |
-| `kubectl get pods -n prod-ns` | *(Insert output of kubectl get pods -n prod-ns)* |
-| `kubectl get svc -n prod-ns` | *(Insert output of kubectl get svc -n prod-ns)* |
+| `kubectl get pods -n prod-ns` |
+| `kubectl get svc -n prod-ns` | 
 
 ---
 
 ## 4) Deployment strategy (what and why)
 
-I recommend starting with the **Rolling Deployment** strategy. This is the simplest strategy for a standard Kubernetes Deployment object and is excellent for demonstrating foundational knowledge.
+I recommend starting with the **Rolling Deployment** strategy. This is the simplest strategy for a standard Kubernetes Deployment object.
 
 ### How and Why:
 
 | Aspect | Details |
 | :--- | :--- |
-| **How It's Implemented** | This strategy is implemented **by default** when deploying a standard K8S `Deployment` manifest. Kubernetes updates pod replicas incrementally, replacing old pods with new ones one by one, while respecting defined limits (e.g., `maxUnavailable` and `maxSurge`). |
-| **Why It's Chosen for this Exercise** | **Rolling Deployment** is the easiest to start with, requires no additional infrastructure (unlike Blue/Green), and offers a good balance of speed and safety for non-critical changes. The choice for this exercise demonstrates a foundational understanding of Kubernetes native deployment capabilities. |
+| **How It's Implemented** | This strategy is implemented **by default** when deploying a standard K8S `Deployment` manifest. |
+| **Why It's Chosen for this Exercise** | **Rolling Deployment** is the easiest to start with, requires no additional infrastructure (unlike Blue/Green), and offers a good balance of speed and safety for non-critical changes. |
 | **Real-World Context** | For a real-world critical application, one might choose **Canary** (for finer-grained traffic splitting and automated verification) or **Blue/Green** (for near-zero downtime and instant rollback). The Rolling strategy is suitable for non-mission-critical updates where a gradual rollout is acceptable. |
 
 ## 5) Automating Harness setup
@@ -251,13 +251,13 @@ This method integrates Harness management into existing Infrastructure as Code (
 
 ---
 
-#### 3. Harness API & Model Context Protocol (MCP)
+#### 3. Harness API
 
-For advanced or highly customized automation, direct API interaction provides maximum flexibility and access to the platform's core protocol.
+For advanced or highly customized automation, direct API interaction provides maximum flexibility and access to the platform's core functionalities.
 
 * **How:** Directly use the Harness API (GraphQL and REST) for creation and management, typically accomplished by scripting with tools like Python or custom CLI wrappers.
-* ****Harness Model Context Protocol (MCP)**:** The automation scripts interact directly with the **Harness Monolith Control Plane (MCP) server** (or its microservice-based successor). The MCP is the underlying communication protocol and server-side component responsible for managing and distributing all context, configuration, and state changes within the Harness platform.
-* **Why:** Provides granular control over the entity creation process. Advanced scripting can be used for bulk operations, complex dependency management, or integrating with specialized internal tools by directly manipulating the platform's context via the API/MCP layer.
+* **Interaction:** The automation scripts interact directly with the Harness API endpoints for managing and distributing all context, configuration, and state changes within the Harness platform.
+* **Why:** Provides granular control over the entity creation process. Advanced scripting can be used for bulk operations, complex dependency management, or integrating with specialized internal tools by directly leveraging the platform's API layer.
 
 ## 6) Doc feedback
 
@@ -273,19 +273,8 @@ The tutorial could be significantly improved by having a more explicit **"Prereq
 
 ---
 
-### 2. YAML First vs. UI First Flow
+### 2. K3D/Local Cluster Setup
 
-The document currently toggles between instructions for creating entities via YAML files (Configuration as Code) and via the Harness User Interface (UI).
-
-* **Recommendation:** Establish a clearer learning path for the user. For instance:
-    > "For a quick start, follow the **UI First** path (Sections A, B, C). Then, switch to the **YAML First (CaC)** path (Section D) to understand version control and automation."
-
-* This structure would greatly improve flow and prevent confusion for beginners deciding which method to follow.
-
----
-
-### 3. K3D/Local Cluster Setup
-
-Since DevRel assignments and quick start guides often require a fast local setup, including a dedicated section on local cluster installation would significantly lower the barrier to entry.
+When you want to try a fast local setup, including a dedicated section on local cluster installation would significantly lower the barrier to entry.
 
 * **Recommendation:** Include a brief, high-level guide (or a link to a one-click setup script) for creating a local **K3D** or **Minikube** cluster. This should cover the minimum steps needed to get a functioning Kubernetes context ready for the Harness Delegate installation.
