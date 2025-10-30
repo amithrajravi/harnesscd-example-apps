@@ -324,3 +324,4 @@ CONTAINER ID   IMAGE                                                            
 f684ae2e2baa   us-docker.pkg.dev/gar-prod-setup/harness-public/harness/delegate:25.10.86901   "./setup-bc.sh ./sta…"   About an hour ago   Up 2 minutes (unhealthy)                     friendly_lovelace
 PS C:\Users\ACER>
 ```
+<img width="1915" height="1068" alt="image" src="https://github.com/user-attachments/assets/858ceffe-66f0-4e69-af7e-d97887fbdc67" />
