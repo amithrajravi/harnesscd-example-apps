@@ -208,8 +208,8 @@ Run the following commands for each environment.
 
 ### 3. Production Namespace (`prod-ns`)
 
-| Command | Output |
-| :--- | :--- |
+| Command |
+| :--- |
 | `kubectl get pods -n prod-ns` |
 | `kubectl get svc -n prod-ns` | 
 
