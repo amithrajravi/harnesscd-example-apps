@@ -21,6 +21,8 @@ Reference followed: `https://developer.harness.io/docs/continuous-delivery/get-s
   - `kubernetes-connector.yml` — K8s connector (inherit from delegate)
   - `github-connector.yml` — GitHub connector (account-level)
   - `ownapp-multi-env-pipeline.yml` — Multi-stage pipeline (Dev → QA → Approval → Prod)
+ 
+<img width="1918" height="1078" alt="pipeline-design" src="https://github.com/user-attachments/assets/713a5402-d388-4a4b-8449-db83ab58a05e" />
 
 ## 1) Pipeline design
 
