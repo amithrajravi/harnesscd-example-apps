@@ -1,6 +1,6 @@
-# Exercise for DevRel Role — Multi‑Env Harness CD Pipeline
+# Deploy your microservice application using Continuous Delivery
 
-This repository is trimmed to only the artifacts required to deploy a microservice (Guestbook UI) to Dev, QA, and Prod Kubernetes environments using a Harness pipeline with a Production approval gate.
+This repository gives a quick overview about deploying a microservice (Guestbook UI) to Dev, QA, and Prod Kubernetes environments using a Harness CD pipeline with a Production approval gate.
 
 Harness project: `default_project` in your trial account (`https://app.harness.io/ng/account/exqRN-uBSkKCxM4tS2ZLBg/all/orgs/default/projects/default_project/overview`).
 
@@ -12,8 +12,8 @@ Reference followed: `https://developer.harness.io/docs/continuous-delivery/get-s
   - `guestbook-ui-deployment.yaml`, `guestbook-ui-svc.yaml` — Kubernetes manifests deployed by the pipeline
 - `deploy-own-app/cd-pipeline/`
   - `service.yml` — Harness Service pointing to manifests in this repo
-  - `environment.yml` — Dev environment (PreProduction)
-  - `environment-qa.yml` — QA environment (PreProduction)
+  - `environment.yml` — Dev environment (Development)
+  - `environment-qa.yml` — QA environment (Staging)
   - `environment-prod.yml` — Prod environment (Production)
   - `infrastructure-definition*.yml` — K8s infrastructure for Dev/QA/Prod
   - `kubernetes-connector.yml` — K8s connector (inherit from delegate)
@@ -25,55 +25,267 @@ Reference followed: `https://developer.harness.io/docs/continuous-delivery/get-s
 - Stages: Dev (Rolling) → QA (Rolling) → Approval (HarnessApproval) → Prod (Rolling)
 - Service: `ownappservice` (Kubernetes) deploying `guestbook` manifests from this repo
 - Environments: `ownappdevenv` (Dev), `ownappqaenv` (QA), `ownappprodenv` (Prod)
-- Infra: per-environment K8s Direct with `connectorRef: ownappk8sconnector`
 - Approval: requires a manual gate before Prod deployment
 
-## 2) Pipeline execution (what to expect)
+![Pipeline design](images\pipeline-design.png)
+
+```yaml
+pipeline:
+  name: ownapp_multi_env_pipeline
+  identifier: ownapp_multi_env_pipeline
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: Deploy to Dev
+        identifier: deploy_to_dev
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: ownappservice
+          environment:
+            environmentRef: ownappdevenv
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: ownappk8sinfra
+          execution:
+            steps:
+              - step:
+                  name: Rollout Deployment
+                  identifier: rolloutDeployment
+                  type: K8sRollingDeploy
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+            rollbackSteps:
+              - step:
+                  name: Rollback Rollout Deployment
+                  identifier: rollbackRolloutDeployment
+                  type: K8sRollingRollback
+                  timeout: 10m
+                  spec:
+                    pruningEnabled: false
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+    - stage:
+        name: Deploy to QA
+        identifier: deploy_to_qa
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: ownappservice
+          environment:
+            environmentRef: ownappqaenv
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: ownappk8sinfraqa
+          execution:
+            steps:
+              - step:
+                  name: Rollout Deployment
+                  identifier: rolloutDeployment
+                  type: K8sRollingDeploy
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+            rollbackSteps:
+              - step:
+                  name: Rollback Rollout Deployment
+                  identifier: rollbackRolloutDeployment
+                  type: K8sRollingRollback
+                  timeout: 10m
+                  spec:
+                    pruningEnabled: false
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+    - stage:
+        name: Approve Prod
+        identifier: approve_prod
+        description: "Production gate approval"
+        type: Approval
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: HarnessApproval
+                  name: Prod Approval
+                  identifier: prodApproval
+                  timeout: 1d
+                  spec:
+                    approvalMessage: |-
+                      Please review the deployment to Prod and approve.
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      minimumCount: 1
+                      disallowPipelineExecutor: false
+                      userGroups:
+                        - account._account_all_users
+                    approverInputs: []
+    - stage:
+        name: Deploy to Prod
+        identifier: deploy_to_prod
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: ownappservice
+          environment:
+            environmentRef: ownappprodenv
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: ownappk8sinfraprod
+          execution:
+            steps:
+              - step:
+                  name: Rollout Deployment
+                  identifier: rolloutDeployment
+                  type: K8sRollingDeploy
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+            rollbackSteps:
+              - step:
+                  name: Rollback Rollout Deployment
+                  identifier: rollbackRolloutDeployment
+                  type: K8sRollingRollback
+                  timeout: 10m
+                  spec:
+                    pruningEnabled: false
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+```
+
+## 2) Pipeline execution
 
 Run the pipeline in Harness. Execution should show:
 - Dev stage succeeds → QA stage succeeds → Approval waits → once approved → Prod stage succeeds
 
-## 3) Verify the deployment (simple checks)
+## 3) Verify the deployment
 
-Run these commands against the namespace used by each stage (Dev/QA/Prod):
+Run the following commands in the left column for each environment.
 
-```bash
-# What’s running and exposed
-kubectl get deploy,rs,po,svc -n <dev|qa|prod-namespace>
+### 1. Development Namespace (`dev-ns`)
 
-# Health and rollout details
-kubectl describe deploy <guestbook-deployment> -n <namespace>
+| Command | Output |
+| :--- | :--- |
+| `kubectl get pods -n dev-ns` | *(Insert output of kubectl get pods -n dev-ns)* |
+| `kubectl get svc -n dev-ns` | *(Insert output of kubectl get svc -n dev-ns)* |
 
-# Recent app logs
-kubectl logs deploy/<guestbook-deployment> -n <namespace> --tail=100
-```
+---
+
+### 2. QA Namespace (`qa-ns`)
+
+| Command | Output |
+| :--- | :--- |
+| `kubectl get pods -n qa-ns` | *(Insert output of kubectl get pods -n qa-ns)* |
+| `kubectl get svc -n qa-ns` | *(Insert output of kubectl get svc -n qa-ns)* |
+
+---
+
+### 3. Production Namespace (`prod-ns`)
+
+| Command | Output |
+| :--- | :--- |
+| `kubectl get pods -n prod-ns` | *(Insert output of kubectl get pods -n prod-ns)* |
+| `kubectl get svc -n prod-ns` | *(Insert output of kubectl get svc -n prod-ns)* |
+
+---
 
 ## 4) Deployment strategy (what and why)
 
-- Strategy: Kubernetes Rolling update in all environments.
-- Why this strategy:
-  - Keeps the app available during updates (pods roll gradually)
-  - Uses native readiness checks for safe rollout
-  - Easy rollback to the previous ReplicaSet if needed
-- Notes: Canary and Blue‑Green are valid alternatives but were omitted here to keep the exercise focused.
+I recommend starting with the **Rolling Deployment** strategy. This is the simplest strategy for a standard Kubernetes Deployment object and is excellent for demonstrating foundational knowledge.
 
-## 5) Automating Harness setup (your options)
+### How and Why:
 
-- GitOps with YAML (recommended here): store Services, Environments, Infrastructures, Connectors, and Pipelines in Git (this repo) and import/sync in Harness.
-- Harness APIs: create/update entities via REST.
-- Terraform Provider for Harness: manage entities declaratively and promote across orgs/projects.
-- Pipelines as Code: keep pipelines remote in Git with PR reviews.
+| Aspect | Details |
+| :--- | :--- |
+| **How It's Implemented** | This strategy is implemented **by default** when deploying a standard K8S `Deployment` manifest. Kubernetes updates pod replicas incrementally, replacing old pods with new ones one by one, while respecting defined limits (e.g., `maxUnavailable` and `maxSurge`). |
+| **Why It's Chosen for this Exercise** | **Rolling Deployment** is the easiest to start with, requires no additional infrastructure (unlike Blue/Green), and offers a good balance of speed and safety for non-critical changes. The choice for this exercise demonstrates a foundational understanding of Kubernetes native deployment capabilities. |
+| **Real-World Context** | For a real-world critical application, one might choose **Canary** (for finer-grained traffic splitting and automated verification) or **Blue/Green** (for near-zero downtime and instant rollback). The Rolling strategy is suitable for non-mission-critical updates where a gradual rollout is acceptable. |
 
-## 6) Doc feedback (how it could be clearer)
+## 5) Automating Harness setup
 
-- Include a complete Dev→QA→Prod example with an explicit Prod approval gate.
-- Clarify connector scopes and how to reference them (`account.`, `org.`, or project‑level `connectorRef`).
-- Add troubleshooting for common issues: delegate→cluster connectivity (localhost:8080), namespace RBAC, and wrong repo/branch.
+The process of creating Harness entities (Connectors, Services, Environments, Pipelines) should be automated using **Configuration as Code (CaC)** to ensure consistency, version control, and auditability across all environments.
 
-## Setup notes (before you run it)
+### Primary Methods for Automating Harness Entity Creation
 
-- Make sure your Delegate is connected and can reach the Kubernetes API.
-- In `deploy-own-app/cd-pipeline/kubernetes-connector.yml`, set the delegate selector to match your delegate.
-- Ensure a GitHub PAT secret exists (e.g., `ownappgitpat`) and that `github-connector.yml` points to your account/repo/branch.
-- Namespaces in infra definitions: Dev `dev-ns`, QA `qa-ns`, Prod `prod-ns` — change if your cluster uses different ones.
+#### 1. Harness Git Experience (Recommended for Pipelines)
 
+This is the preferred GitOps approach built directly into Harness.
+
+* **How:** Store your Pipeline and entity YAML files (e.g., Service, Environment, Infrastructure Definition) directly in your Git repository. Harness is configured to read from and sync these entities automatically upon committing changes to Git.
+* **Why:** Ensures that the source of truth is always Git. Changes are version-controlled, easily auditable, and deployments are consistent.
+
+---
+
+#### 2. Terraform/OpenTofu Provider (Recommended for Infrastructure)
+
+This method integrates Harness management into existing Infrastructure as Code (IaC) workflows.
+
+* **How:** Use the dedicated **Harness Terraform provider** (or OpenTofu, a fork of Terraform) to manage entities. Entities are defined using HashiCorp Configuration Language (HCL).
+* **Why:** Excellent for provisioning cross-module entities like **Connectors** and **Projects**, as well as complex Pipelines. It allows leveraging standard IaC practices and state management.
+
+---
+
+#### 3. Harness API & Model Context Protocol (MCP)
+
+For advanced or highly customized automation, direct API interaction provides maximum flexibility and access to the platform's core protocol.
+
+* **How:** Directly use the Harness API (GraphQL and REST) for creation and management, typically accomplished by scripting with tools like Python or custom CLI wrappers.
+* ****Harness Model Context Protocol (MCP)**:** The automation scripts interact directly with the **Harness Monolith Control Plane (MCP) server** (or its microservice-based successor). The MCP is the underlying communication protocol and server-side component responsible for managing and distributing all context, configuration, and state changes within the Harness platform.
+* **Why:** Provides granular control over the entity creation process. Advanced scripting can be used for bulk operations, complex dependency management, or integrating with specialized internal tools by directly manipulating the platform's context via the API/MCP layer.
+
+## 6) Doc feedback
+
+The following suggestions are aimed at improving the clarity, flow, and accessibility of the tutorial, particularly for users setting up a local development environment.
+
+### 1. Clarity on Prerequisites
+
+The tutorial could be significantly improved by having a more explicit **"Prerequisites"** section at the very top. This section should clearly outline the following requirements *before* starting the main deployment steps:
+
+* **A live Kubernetes cluster:** (e.g., local Minikube, K3D, or a cloud-based cluster).
+* **A publicly accessible Docker image** (the application artifact to be deployed).
+* **A Git repository** (containing application manifests or for use as the Configuration as Code source).
+
+---
+
+### 2. YAML First vs. UI First Flow
+
+The document currently toggles between instructions for creating entities via YAML files (Configuration as Code) and via the Harness User Interface (UI).
+
+* **Recommendation:** Establish a clearer learning path for the user. For instance:
+    > "For a quick start, follow the **UI First** path (Sections A, B, C). Then, switch to the **YAML First (CaC)** path (Section D) to understand version control and automation."
+
+* This structure would greatly improve flow and prevent confusion for beginners deciding which method to follow.
+
+---
+
+### 3. K3D/Local Cluster Setup
+
+Since DevRel assignments and quick start guides often require a fast local setup, including a dedicated section on local cluster installation would significantly lower the barrier to entry.
+
+* **Recommendation:** Include a brief, high-level guide (or a link to a one-click setup script) for creating a local **K3D** or **Minikube** cluster. This should cover the minimum steps needed to get a functioning Kubernetes context ready for the Harness Delegate installation.
