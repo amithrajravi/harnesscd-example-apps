@@ -278,3 +278,47 @@ The tutorial could be significantly improved by having a more explicit **"Prereq
 When you want to try a fast local setup, including a dedicated section on local cluster installation would significantly lower the barrier to entry.
 
 * **Recommendation:** Include a brief, high-level guide (or a link to a one-click setup script) for creating a local **K3D** or **Minikube** cluster. This should cover the minimum steps needed to get a functioning Kubernetes context ready for the Harness Delegate installation.
+
+---
+
+## For the reviewers: I was unable to install the delegate (Helm/Docker) both are starting but the pod status is unhealthy.
+```
+PS C:\Users\ACER> docker run -d --cpus=1 --memory=2g `
+>>   -e DELEGATE_NAME=docker-delegate `
+>>   -e NEXT_GEN="true" `
+>>   -e DELEGATE_TYPE="DOCKER" `
+>>   -e ACCOUNT_ID=exqRN-uBSkKCxM4tS2ZLBg `
+>>   -e DELEGATE_TOKEN=NTJiOWUzODdlNTZjNzMwZGE4MDc2OWNhMzlhZTYzYjA= `
+>>   -e DELEGATE_TAGS="" `
+>>   -e MANAGER_HOST_AND_PORT=https://app.harness.io us-docker.pkg.dev/gar-prod-setup/harness-public/harness/delegate:25.10.86901
+6ee65e87ddba2ac0b9d56045c5360296f35fcf9e098bf2dd59f1a634cafb2bbc
+PS C:\Users\ACER> docker run -d --cpus=0.1 --memory=100m `
+>>   -v /var/run/docker.sock:/var/run/docker.sock `
+>>   -e ACCOUNT_ID=exqRN-uBSkKCxM4tS2ZLBg `
+>>   -e MANAGER_HOST_AND_PORT=https://app.harness.io `
+>>   -e UPGRADER_WORKLOAD_NAME=docker-delegate `
+>>   -e UPGRADER_TOKEN=NTJiOWUzODdlNTZjNzMwZGE4MDc2OWNhMzlhZTYzYjA= `
+>>   -e CONTAINER_STOP_TIMEOUT=3600 `
+>>   -e SCHEDULE="0 */1 * * *" harness/upgrader:latest
+Unable to find image 'harness/upgrader:latest' locally
+latest: Pulling from harness/upgrader
+108571d0ac6e: Pull complete
+b83ce1c86227: Pull complete
+9bef1769826a: Pull complete
+Digest: sha256:eef92e36c8ac0e9a4fb7709c9e763201c409e4be0af1adc40bbeb1e7d93ccc0d
+Status: Downloaded newer image for harness/upgrader:latest
+8af73c2c408dbcb3e82e85389970858a3f810af809064dc04147e4da8d49e263
+PS C:\Users\ACER> kubectl get nodes
+NAME             STATUS   ROLES           AGE   VERSION
+docker-desktop   Ready    control-plane   26h   v1.34.1
+PS C:\Users\ACER> docker ps
+CONTAINER ID   IMAGE                                                                          COMMAND                  CREATED          STATUS                            PORTS     NAMES
+8af73c2c408d   harness/upgrader:latest                                                        "/delegate-upgrader"     9 minutes ago    Up 9 minutes                                eloquent_blackwell
+6ee65e87ddba   us-docker.pkg.dev/gar-prod-setup/harness-public/harness/delegate:25.10.86901   "./setup-bc.sh ./sta…"   11 minutes ago   Up 8 seconds (health: starting)             cool_cori
+PS C:\Users\ACER> docker ps
+CONTAINER ID   IMAGE                                                                          COMMAND                  CREATED             STATUS                             PORTS     NAMES
+8af73c2c408d   harness/upgrader:latest                                                        "/delegate-upgrader"     27 minutes ago      Up 26 minutes                                eloquent_blackwell
+6ee65e87ddba   us-docker.pkg.dev/gar-prod-setup/harness-public/harness/delegate:25.10.86901   "./setup-bc.sh ./sta…"   28 minutes ago      Up 28 seconds (health: starting)             cool_cori
+f684ae2e2baa   us-docker.pkg.dev/gar-prod-setup/harness-public/harness/delegate:25.10.86901   "./setup-bc.sh ./sta…"   About an hour ago   Up 2 minutes (unhealthy)                     friendly_lovelace
+PS C:\Users\ACER>
+```
